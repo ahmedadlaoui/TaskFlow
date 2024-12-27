@@ -3,7 +3,7 @@
 class database_connection
 {
     private static $instance = NULL;
-    private static $connection;
+    private  $connection;
     private  function __construct()
     {
         $servername = "localhost";
@@ -12,9 +12,12 @@ class database_connection
         $dbname = "TaskFlow";
         $port = 3306;
 
-
-        $this->connection = new PDO("mysql:host=$servername;dbname=$dbname;port=$port", $username, $password);
-        $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try {
+            $this->connection = new PDO("mysql:host=$servername;dbname=$dbname;port=$port", $username, $password);
+            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            echo 'error connecting to the data base ' . $e->getMessage();
+        }
     }
 
     public static function getinstance()
@@ -25,18 +28,11 @@ class database_connection
         }
         return self::$instance;
     }
-    public static function getconnection()
+    public  function getconnection()
     {
-        if (self::$connection === NULL) {
-            self::getinstance();
-        }
-        return self::$connection;
+        return $this->connection;
     }
 }
-
-
-
-
 
 class Task
 {
@@ -65,36 +61,32 @@ class Task
             'status' => $this->status,
         ];
     }
-    public function addtask()
+    public function addtask($title, $description, $type, $assigned_to, $status)
     {
-        global $connection;
+        try {
+            $db_instance = database_connection::getinstance();
+            $connection = $db_instance->getconnection();
+        } catch (PDOException $e) {
+            echo "Database not connected: " . $e->getMessage();
+        }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
-          
-            $title = trim($_POST['task-title']);
-            $description = trim($_POST['task-description']);
-            $type = $_POST['task-type'];
-            $assigned_to = $_POST['assigned-user'];
-            $status = 'Pending';
-    
             try {
-                $query = "INSERT INTO tasks (title, description, type, assigned_to, status) VALUES (:title, :description, :type, :assigned_to, :status)";
-                $stmt = $connection->prepare($query);
-    
+
+                $stmt = $connection->prepare("INSERT INTO tasks (title, description, type, assigned_to, status) VALUES (:title, :description, :type, :assigned_to, :status)");
                 $stmt->bindParam(':title', $title);
                 $stmt->bindParam(':description', $description);
                 $stmt->bindParam(':type', $type);
                 $stmt->bindParam(':assigned_to', $assigned_to);
                 $stmt->bindParam(':status', $status);
-    
                 $stmt->execute();
-                echo "Task added successfully!";
+                header("Location: index.php?1");
+                exit();
             } catch (PDOException $e) {
                 echo "Error adding task: " . $e->getMessage();
             }
-        }
+        
     }
-    
+
 
     public function assignTo(User $user)
     {
@@ -131,6 +123,19 @@ class User
     }
 }
 
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
+
+    $title = trim($_POST['task-title']);
+    $description = trim($_POST['task-description']);
+    $type = $_POST['task-type'];
+    $assigned_to = $_POST['assigned-user'];
+    $status = 'Pending';
+
+    $task = new Task(null, $type, $title, $description, $status);
+    $task->addtask($title, $description, $type, $assigned_to, $status);
+}
 ?>
 
 
@@ -294,9 +299,7 @@ class User
                         <div class="flex flex-col">
                             <label for="assigned-user" class="text-sm font-medium text-gray-700">Assigne to</label>
                             <select id="assigned-user" name="assigned-user" class="mt-1 p-3 border border-gray-300 rounded-md text-sm w-full" required>
-                                <option value="user1">Me</option>
-                                <option value="user2">Jane Smith</option>
-                                <option value="user3">Mark Johnson</option>
+                                <option value="You">you</option>
                             </select>
                         </div>
                     </div>

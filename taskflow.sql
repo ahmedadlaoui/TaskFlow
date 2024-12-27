@@ -20,3 +20,5 @@ CREATE TABLE tasks (
 Insert into users(full_name) VALUES ('You');
 -- @block
 SELECT * FROM tasks;
+-- @block
+DESCRIBE TASKS;
