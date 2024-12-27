@@ -2,6 +2,7 @@
 
 include 'dbcon.php';
 include 'task.php';
+include 'user.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
     $task = new Task(null, $_POST['task-type'], trim($_POST['task-title']), trim($_POST['task-description']), 'Pending');
@@ -139,7 +140,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['savestatus'])){
                                 </td>
 
                                 <td class="px-4 py-3 text-sm text-gray-700">
-                                    <a href="taskdetails.php?task_ID=<?php echo $task['task_ID']; ?>" class="text-blue-500 hover:underline">
+                                    <a href="taskdetails.php?task_ID=<?php echo $task['task_ID']; ?>" target="_blank" class="text-blue-500 hover:underline">
                                         View Details
                                     </a>
                                 </td>
