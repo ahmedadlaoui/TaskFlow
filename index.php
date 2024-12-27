@@ -1,162 +1,26 @@
 <?php
 
-class database_connection
-{
-    private static $instance = NULL;
-    private  $connection;
-    private  function __construct()
-    {
-        $servername = "localhost";
-        $username = "root";
-        $password = "06database@SM23";
-        $dbname = "TaskFlow";
-        $port = 3306;
-
-        try {
-            $this->connection = new PDO("mysql:host=$servername;dbname=$dbname;port=$port", $username, $password);
-            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch (PDOException $e) {
-            echo 'error connecting to the data base ' . $e->getMessage();
-        }
-    }
-
-    public static function getinstance()
-    {
-        if (self::$instance === NULL) {
-            self::$instance = new database_connection();
-            return self::$instance;
-        }
-        return self::$instance;
-    }
-    public  function getconnection()
-    {
-        return $this->connection;
-    }
-}
-
-class Task
-{
-    private $task_ID;
-    private $assigned_to;
-    private $type;
-    private $title;
-    private $description;
-    private $status;
-
-    public function __construct($task_ID, $type, $title, $description, $status = 'Pending')
-    {
-        $this->task_ID = $task_ID;
-        $this->type = $type;
-        $this->title = $title;
-        $this->description = $description;
-        $this->status = $status;
-    }
-    public function getDetails()
-    {
-        return [
-            'task_ID' => $this->task_ID,
-            'type' => $this->type,
-            'title' => $this->title,
-            'description' => $this->description,
-            'status' => $this->status,
-        ];
-    }
-    public function addtask($title, $description, $type, $assigned_to, $status)
-    {
-        try {
-            $db_instance = database_connection::getinstance();
-            $connection = $db_instance->getconnection();
-        } catch (PDOException $e) {
-            echo "Database not connected: " . $e->getMessage();
-        }
-
-            try {
-
-                $stmt = $connection->prepare("INSERT INTO tasks (title, description, type, assigned_to, status) VALUES (:title, :description, :type, :assigned_to, :status)");
-                $stmt->bindParam(':title', $title);
-                $stmt->bindParam(':description', $description);
-                $stmt->bindParam(':type', $type);
-                $stmt->bindParam(':assigned_to', $assigned_to);
-                $stmt->bindParam(':status', $status);
-                $stmt->execute();
-                header("Location: index.php?1");
-                exit();
-            } catch (PDOException $e) {
-                echo "Error adding task: " . $e->getMessage();
-            }
-        
-    }
-
-
-    public function assignTo(User $user)
-    {
-        $this->assigned_to = $user;
-        $user->addTask($this);
-    }
-    public function changestatus($status)
-    {
-        $this->status = $status;
-    }
-    public function getassignedTo()
-    {
-        return $this->assigned_to;
-    }
-}
-
-
-    class User
-    {
-        private $full_name;
-        private $tasks = [];
-
-        public function __construct($full_name)
-        {
-            $this->full_name = $full_name;
-        }
-        public function addTask(Task $task)
-        {
-            $this->tasks[] = $task;
-        }
-        public function gettasks()
-        {
-            return $this->tasks;
-        }
-        public static function adduser($full_name){
-            try {
-                $db_instance = database_connection::getinstance();
-                $connection = $db_instance->getconnection();
-    
-                $stmt = $connection->prepare("INSERT INTO users (full_name) VALUES (:full_name)");
-                $stmt->bindParam(':full_name', $full_name);
-                $stmt->execute();
-
-
-
-            } catch (PDOException $e) {
-                echo "Error adding user: " . $e->getMessage();
-            }
-        }
-    }
-
-
+include 'dbcon.php';
+include 'task.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
-
-
-    $title = trim($_POST['task-title']);
-    $description = trim($_POST['task-description']);
-    $type = $_POST['task-type'];
-    $assigned_to = $_POST['assigned-user'];
-    $status = 'Pending';
-
-    $task = new Task(null, $type, $title, $description, $status);
-    $task->addtask($title, $description, $type, $assigned_to, $status);
+    $task = new Task(null, $_POST['task-type'], trim($_POST['task-title']), trim($_POST['task-description']), 'Pending');
+    $task->addtask(trim($_POST['task-title']), trim($_POST['task-description']), $_POST['task-type'],  $_POST['assigned-user'], 'Pending');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
-        $newuser = new user($_POST['full-name']);
-        $newuser->adduser($_POST['full-name']);
+    $newuser = new user($_POST['full-name']);
+    $newuser->adduser($_POST['full-name']);
 }
+if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['savestatus'])){
+    $task_to_update = $_POST['task_ID'];
+    $updated_status = $_POST['newstatus'];
+
+    $task_instance = new Task(null, null, null, null);
+    $task_instance->changestatus($task_to_update, $updated_status);
+}
+
+
 ?>
 
 
@@ -183,22 +47,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
     </header>
 
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <!-- Modal -->
         <div class="bg-white shadow-md rounded-lg p-6 w-full max-w-md relative">
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Add Member</h2>
             <form action="index.php" method="POST" class="space-y-4">
-                <!-- First Name -->
                 <div>
                     <label for="first-name" class="block text-sm font-medium text-gray-700">Full name</label>
                     <input type="text" id="first-name" name="full-name" placeholder="Enter full name"
                         class="mt-1 block w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
                 </div>
-                <!-- Submit Button -->
-                
-                    <button type="submit" 
-                        class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ">
-                        Add
-                    </button>
+
+                <button type="submit"
+                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ">
+                    Add
+                </button>
             </form>
             <button id="closeModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
                 ✖
@@ -207,17 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
     </div>
 
     <div class="w-full max-w-7xl mx-auto p-4">
-        <!-- Container for the Task Group View -->
         <div class="bg-white rounded-lg shadow-lg">
             <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                <!-- Task Group Title Section -->
+
                 <h2 class="text-2xl font-semibold text-gray-800">Tasks table</h2>
             </div>
 
-            <!-- Filters Section -->
             <div class="flex items-center justify-between p-4 border-b border-gray-200">
 
-                <!-- Left Filter Options -->
                 <div class="flex space-x-4">
                     <div class="relative">
                         <select class="block w-full py-2 px-3 bg-white border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -230,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
                     Add New Member
                 </button>
 
-                <!-- Right Filter Options -->
             </div>
 
             <div class="overflow-x-auto p-4">
@@ -241,40 +98,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
                             <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Type of Task</th>
                             <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Assigned To</th>
                             <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Details</th>
                         </tr>
                     </thead>
                     <tbody>
+                        <?php
+                        try {
+                            $db_instance = database_connection::getinstance();
+                            $connection = $db_instance->getconnection();
+                        } catch (PDOException $e) {
+                            echo "Database not connected: " . $e->getMessage();
+                        }
+                        $tasks = $db_instance->fetchAlltasks();
 
-                        <form class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">Task 2</td>
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                <select class="block w-full py-1 px-2 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="basic">Basic</option>
-                                    <option value="bug">Bug</option>
-                                    <option value="feature" selected>Feature</option>
-                                </select>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                <select class="block w-full py-1 px-2 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="John Doe">John Doe</option>
-                                    <option value="Jane Smith">Jane Smith</option>
-                                    <option value="Mark Johnson" selected>Mark Johnson</option>
-                                </select>
-                            </td>
-                            <td class="px-4 py-3 text-sm text-gray-700">
-                                <select class="block w-full py-1 px-2 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="completed" selected>Completed</option>
-                                    <option value="in-progress">In Progress</option>
-                                    <option value="pending">Pending</option>
-                                </select>
-                            </td>
-                            <button name="saveButton" type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-8 ">
-                                Save
-                            </button>
+                        foreach ($tasks as $task) :
+                        ?>
+                            <tr class="border-b border-gray-200">
 
-                        </form>
+                                <td class="px-4 py-3 text-sm text-gray-700"><?php echo htmlspecialchars($task['title']); ?></td>
+
+                                <td class="px-4 py-3 text-sm text-gray-700"><?php echo htmlspecialchars($task['type']); ?></td>
+
+                                <td class="px-4 py-3 text-sm text-gray-700"><?php echo htmlspecialchars($task['assigned_to']); ?></td>
+
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    <form action="index.php" method="POST">
+                                        <input type="hidden" name="task_ID" value="<?php echo $task['task_ID']; ?>">
+                                        <div class="flex items-center space-x-4">
+                                            <select name="newstatus" class="block py-1 px-2 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="Pending" <?php echo $task['status'] === 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                                                <option value="In Progress" <?php echo $task['status'] === 'In Progress' ? 'selected' : ''; ?>>In Progress</option>
+                                                <option value="Completed" <?php echo $task['status'] === 'Completed' ? 'selected' : ''; ?>>Completed</option>
+                                            </select>
+                                            <button name="savestatus" type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                Save
+                                            </button>
+                                        </div>
+
+                                    </form>
+                                </td>
+
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    <a href="taskdetails.php?task_ID=<?php echo $task['task_ID']; ?>" class="text-blue-500 hover:underline">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
+
         </div>
         </tbody>
         </table>
@@ -317,7 +191,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
                         <div class="flex flex-col">
                             <label for="assigned-user" class="text-sm font-medium text-gray-700">Assigne to</label>
                             <select id="assigned-user" name="assigned-user" class="mt-1 p-3 border border-gray-300 rounded-md text-sm w-full" required>
-                                <option value="You">you</option>
+                                <?php
+                                try {
+                                    $db_instance = database_connection::getinstance();
+                                    $connection = $db_instance->getconnection();
+                                } catch (PDOException $e) {
+                                    echo "Database not connected: " . $e->getMessage();
+                                }
+                                $users = $db_instance->fetchAllUsers();
+                                foreach ($users as $user) {
+                                    echo '<option value="' . $user['full_name'] . '">' . $user['full_name'] . '</option>';
+                                }
+                                ?>
+
                             </select>
                         </div>
                     </div>

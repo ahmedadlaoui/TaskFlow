@@ -19,6 +19,6 @@ CREATE TABLE tasks (
 -- @block
 Insert into users(full_name) VALUES ('You');
 -- @block
-SELECT * FROM users;
+SELECT * FROM tasks;
 -- @block
-DESCRIBE users;
+DESCRIBE tasks;
