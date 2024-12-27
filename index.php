@@ -104,28 +104,44 @@ class Task
 }
 
 
-class User
-{
-    private $full_name;
-    private $tasks = [];
+    class User
+    {
+        private $full_name;
+        private $tasks = [];
 
-    public function __construct($full_name)
-    {
-        $this->full_name = $full_name;
+        public function __construct($full_name)
+        {
+            $this->full_name = $full_name;
+        }
+        public function addTask(Task $task)
+        {
+            $this->tasks[] = $task;
+        }
+        public function gettasks()
+        {
+            return $this->tasks;
+        }
+        public static function adduser($full_name){
+            try {
+                $db_instance = database_connection::getinstance();
+                $connection = $db_instance->getconnection();
+    
+                $stmt = $connection->prepare("INSERT INTO users (full_name) VALUES (:full_name)");
+                $stmt->bindParam(':full_name', $full_name);
+                $stmt->execute();
+
+
+
+            } catch (PDOException $e) {
+                echo "Error adding user: " . $e->getMessage();
+            }
+        }
     }
-    public function addTask(Task $task)
-    {
-        $this->tasks[] = $task;
-    }
-    public function gettasks()
-    {
-        return $this->tasks;
-    }
-}
 
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
+
 
     $title = trim($_POST['task-title']);
     $description = trim($_POST['task-description']);
@@ -135,6 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
 
     $task = new Task(null, $type, $title, $description, $status);
     $task->addtask($title, $description, $type, $assigned_to, $status);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['full-name'])) {
+        $newuser = new user($_POST['full-name']);
+        $newuser->adduser($_POST['full-name']);
 }
 ?>
 
@@ -165,23 +186,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['createtask'])) {
         <!-- Modal -->
         <div class="bg-white shadow-md rounded-lg p-6 w-full max-w-md relative">
             <h2 class="text-2xl font-semibold text-gray-800 mb-4">Add Member</h2>
-            <form action="#" method="POST" class="space-y-4">
+            <form action="index.php" method="POST" class="space-y-4">
                 <!-- First Name -->
                 <div>
                     <label for="first-name" class="block text-sm font-medium text-gray-700">Full name</label>
-                    <input type="text" id="first-name" name="first-name" placeholder="Enter full name"
+                    <input type="text" id="first-name" name="full-name" placeholder="Enter full name"
                         class="mt-1 block w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
                 </div>
                 <!-- Submit Button -->
-                <div class="flex justify-end">
-                    <button type="submit"
-                        class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                    <button type="submit" 
+                        class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ">
                         Add
                     </button>
-                </div>
             </form>
-
-            <!-- Close Button -->
             <button id="closeModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
                 ✖
             </button>
