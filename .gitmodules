@@ -1,0 +1,3 @@
+[submodule "MoneyMind"]
+	path = MoneyMind
+	url = https://github.com/nabil-el-allaouii/MoneyMind

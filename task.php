@@ -34,6 +34,7 @@ class Task
             $stmt->bindParam(':assigned_to', $assigned_to);
             $stmt->bindParam(':status', $status);
             $stmt->execute();
+            header('Content-Type: application/json');
             header("Location: index.php?1");
             exit();
         } catch (PDOException $e) {
@@ -74,6 +75,8 @@ class Task
         $stmt = $connection->prepare("SELECT * FROM tasks WHERE task_ID = :task_ID");
         $stmt->bindParam(':task_ID', $task_ID);
         $stmt->execute();
+        header('Accept: application/json');
+        header('Content-Type: application/json');
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         echo "Error fetching task: " . $e->getMessage();
